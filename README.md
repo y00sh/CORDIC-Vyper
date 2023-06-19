@@ -74,4 +74,19 @@ $$x(\theta) = x_0 - y_0\tan(\theta) Eq.1$$
 
 $$y(\theta) = y_0 + x_0\tan(\theta) Eq.2$$
 
+Now here is the magic of cordic we will, start with our initial unit vector described with the coordinates (1,0). When performing the vector rotation, the result is the final x and y coordinates of rotated vector. Trigonometric formualas tell us that:
+
+<p align="center">
+  <img width="200" alt="image" src="https://github.com/y00sh/CORDIC-Vyper/assets/90585099/1b7340da-21d6-4510-ad45-5e23ce2c4ebd">
+</p>
+
+$$\cos(\theta) = \frac{adj}{hyp}$$
+
+$$\sin(\theta) = \frac{opp}{hyp}$$
+
+But since its a unit vector hyp=1. Therefore the final x-coordinate is actually $`\cos(\theta)`$ since adj is the x-axis and the final y-coordinate is actually $`\sin(\theta)`$ since opp is the y-axis. Now to solve for sine and cosine we need to know the $`\theta`$ to rotate the vector in Eq 1 and 2. But those equations require calculating tangent and we are trying to solve for trigonometric functions, we dont have it yet, like asking for the chicken when we don't have the egg.  
+
+The Eureka moment in solving this is to utilize a lookup table 
+
+
 
