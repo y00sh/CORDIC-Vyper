@@ -91,7 +91,7 @@ The Eureka moment in solving this is to utilize a lookup table to replace $`\tan
 So let's create a lookup table we can rewrite our Eq 1 and 2 and replace the $`\tan(\theta)`$ with $`2^{-n}`$
 
 ```python
-A: decimal[34] = [1.0, 0.5, 0.25, 0.125, 0.0625, 0.03125, 0.015625, 0.0078125, 0.00390625, 0.001953125, 0.0009765625, 0.0004882813, 0.0002441406, 0.0001220703, 0.0000610352, 0.0000305176, 0.0000152588, 0.0000076294, 0.0000038147, 0.0000019073, 0.0000009537, 0.0000004768, 0.0000002384, 0.0000001192, 0.0000000596, 0.0000000298, 0.0000000149, 0.0000000075, 0.0000000037, 0.0000000019, 0.0000000009, 0.0000000005, 0.0000000002, 0.0000000001] 
+tan_alpha: decimal[34] = [1.0, 0.5, 0.25, 0.125, 0.0625, 0.03125, 0.015625, 0.0078125, 0.00390625, 0.001953125, 0.0009765625, 0.0004882813, 0.0002441406, 0.0001220703, 0.0000610352, 0.0000305176, 0.0000152588, 0.0000076294, 0.0000038147, 0.0000019073, 0.0000009537, 0.0000004768, 0.0000002384, 0.0000001192, 0.0000000596, 0.0000000298, 0.0000000149, 0.0000000075, 0.0000000037, 0.0000000019, 0.0000000009, 0.0000000005, 0.0000000002, 0.0000000001] 
 alpha: decimal[34] = [45.0, 26.5650511771, 14.0362434679, 7.125016349, 3.576334375, 1.7899106082, 0.8951737102, 0.4476141709, 0.2238105004, 0.1119056771, 0.0559528919, 0.0279764526, 0.0139882271, 0.0069941137, 0.0034970569, 0.0017485284, 0.0008742642, 0.0004371321, 0.0002185661, 0.000109283, 0.0000546415, 0.0000273208, 0.0000136604, 0.0000068302, 0.0000034151, 0.0000017075, 0.0000008538, 0.0000004269, 0.0000002134, 0.0000001067, 0.0000000534, 0.0000000267, 0.0000000133, 0.0000000067]
 ```
 
@@ -101,7 +101,14 @@ $$y(\theta) = y_0 + (x_0 \times r_n \times 2^{-n}) Eq.4$$
 
 where $`r_n`$ determines whether the rotation of the unit vector is positive or negative. Lets use right-hand rule and if we are rotating the vector counterclockwise $`r_n=+1`$ and $`r_n = -1`$ if clockwise. We will push the unit vector in smaller and smaller steps until $`\theta`$ equals the angle that was given as an argument.
 
-Let's go through an example where we would like to find $`\sin(55°)`$ or $`\cos(55°)`$
+Let's go through an example where we would like to find $`\sin(235°)`$ or $`\cos(235°)`$
+
+First, the target angle must be between 90° and 0°. If the angle exceeds this we can fold it due to the symmetry of sine and cosine. If it is 100° → 80°, 230° → 50°, 340° → 70°
+
+```python
+target_angle: decimal = angle % 90.0
+```
+
 <table>
   <tr>
     <td align="center"><img src="https://github.com/y00sh/CORDIC-Vyper/assets/90585099/1751b50c-a430-4710-b88e-ae96264edfbc" width="200"><br>starts at 0°</td>
@@ -121,28 +128,34 @@ The blue unit vector is our target angle and the red unit vector is the vector t
     y: decimal = 0.0    # sine
     theta: decimal = 0.0  #degrees
     
-    for i in range(35):  #35
+    for i in range(35):  
         if theta < target_angle:
-            temp_x = x - (y*A[i]) # since y needs the original x for the calc , too bad no more simultaneous assignment in vyper
-            y = y + (x*A[i])
+            temp_x = x - (y*tan_alpha[i]) # since y needs the original x for the calc , too bad no more simultaneous assignment in vyper
+            y = y + (x*tan_alpha[i])
             x = temp_x
             theta = theta + alpha[i]
         else:
-            temp_x = x + (y*A[i]) # since y needs the original x for the calc 
-            y = y - (x*A[i])
+            temp_x = x + (y*tan_alpha[i]) # since y needs the original x for the calc 
+            y = y - (x*tan_alpha[i])
             x = temp_x
             theta = theta - alpha[i]
 ```
 
-We can also see that the target angle must be between 90° and 0°. If the angle exceeds this we can fold it due to the symmetry of sine and cosine. If it is 100° → 80°, 230° → 50°, 340° → 70°
+Let's not forget that we ignored the $`\cos(\theta)`$ when creating Eq. 1 and 2. Every rotation of the vector meant we left out a multiplication of $`\cos(\theta)`$ in our x and y calcuation. To account for this end the end we must take the product of $`\cos(\theta)`$ and since theta = theta + alpha[i] , we can calculate this constant since the number of iterations that we push the unit vector is constant. 
 
-```python
-target_angle: decimal = angle % 90.0
+```math
+\cos(alpha[0]) \times \cos(alpha[1]) \times \cos(alpha[2]) \dots \times \cos(alpha[34]) = 0.6072529350088814
 ```
 
+To ensure accuracy down to 10 decimal splaces of our fixed point values we shift the radix point as we multiply
 
+```python
+    # multiply back in the cos(alpha)
+    x = (x * 607252.9350088814) / 1000000.0
+    y = (y * 607252.9350088814) / 1000000.0
+```
 
-We must also remember the $`\sin(\theta)`$ and $`\cos(\theta)`$ will be positive or negative based on which quadrant we are in. 
+Lastly, we also remember the $`\sin(\theta)`$ and $`\cos(\theta)`$ will be positive or negative based on which quadrant we are in. 
 
 <p align="center">
   <img width="300" alt="image" src="https://github.com/y00sh/CORDIC-Vyper/assets/90585099/bc225c6b-656a-4ec3-a5e0-63ae00fd78e3">
